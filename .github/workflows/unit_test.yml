@@ -37,8 +37,15 @@ jobs:
         shell: bash
         working-directory: llama-dev
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+          # 设置 base-ref：PR 时使用 PR 目标分支，其他情况使用当前分支
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="${{ github.event.pull_request.base.ref }}"
+            git fetch origin ${BASE_REF}:${BASE_REF} || true
+          else
+            BASE_REF="${{ github.ref_name }}"
+          fi
+          
           uv run -- llama-dev \
             --repo-root ".." ${{ runner.debug && '--debug' || '' }} test \
             --workers ${{ env.NUM_WORKERS }} \
-            --base-ref ${{ github.event.pull_request.base.ref }}
+            --base-ref ${BASE_REF}
