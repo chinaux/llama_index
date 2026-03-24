@@ -8,16 +8,14 @@ on:
 env:
   # How many concurrent processes running pytest in a single CI job
   NUM_WORKERS: 2
-  # 默认测试包，可以根据需要修改
-  TEST_PACKAGE: "llama-index-integrations/vector_stores/llama-index-vector-stores-zvec"
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-unit-tester
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -34,26 +32,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-
-      - name: Run tests for specific package
+      - name: Run tests
         shell: bash
         working-directory: llama-dev
         run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
           uv run -- llama-dev \
-            --repo-root ".." '--debug' test \
+            --repo-root ".." ${{ runner.debug && '--debug' || '' }} test \
             --workers ${{ env.NUM_WORKERS }} \
-            ${{ env.TEST_PACKAGE }}
-
-      # 备用方案：基于分支比较的测试
-      # - name: Run tests with base comparison
-      #   if: false  # 设置为true启用
-      #   shell: bash
-      #   working-directory: llama-dev
-      #   run: |
-      #     git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
-      #     uv run -- llama-dev \
-      #       --repo-root ".." ${{ runner.debug && '--debug' || '' }} test \
-      #       --workers ${{ env.NUM_WORKERS }} \
-      #       --base-ref ${{ github.event.pull_request.base.ref }}
+            --base-ref ${{ github.event.pull_request.base.ref }}
